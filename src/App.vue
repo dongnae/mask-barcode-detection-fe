@@ -20,6 +20,38 @@
       </div>
       <div @click="test">test</div>
     </div>
+
+    <md-dialog :md-active.sync="showRegisterDialog">
+      <md-dialog-title>Preferences</md-dialog-title>
+
+      <md-tabs md-dynamic-height>
+        <md-tab md-label="학생 정보 등록">
+          <md-field>
+            <label for="name">바코드 번호</label>
+            <md-input name="barcode" id="barcode" autocomplete="barcode" v-model="last_stu_data.barcode"/>
+          </md-field>
+          <md-field>
+            <label for="name">이름</label>
+            <md-input name="name" id="name" autocomplete="name" v-model="regis.name"/>
+          </md-field>
+          <md-field>
+            <label for="num">학번</label>
+            <md-input name="num" id="num" autocomplete="num" v-model="regis.num"/>
+          </md-field>
+          <md-field>
+            <label for="birth">생일</label>
+            <md-input name="birth" id="birth" autocomplete="birth" v-model="regis.birth"/>
+          </md-field>
+          <md-field>
+            <label for="pw">자가진단 비밀번호</label>
+            <md-input name="pw" id="pw" autocomplete="pw" v-model="regis.pw"/>
+          </md-field>
+        </md-tab>
+      </md-tabs>
+      <md-dialog-actions>
+        <md-button @click="register">Close</md-button>
+      </md-dialog-actions>
+    </md-dialog>
   </md-content>
 </template>
 
@@ -36,10 +68,19 @@ export default {
       last_stu_data: {},
       submitted: "",
       jaga_jindan_status: -1,
-      mask: -1
+      mask: -1,
+      regis: {
+        name: "",
+        num: "",
+        birth: new Date(),
+        password: ""
+      }
     }
   },
   computed: {
+    showRegisterDialog() {
+      return this.jaga_jindan_status === 1;
+    },
     stu_name() {
       let name = this.last_stu_data.name;
       return name ?? "";
@@ -66,13 +107,31 @@ export default {
         barcode: "바코드", num: "학번", name: "일번", birth: "생일", password: "비번"
       }, (res) => console.log(res));*/
       //socket.emit("submit", "C003000501", (res) => console.log(res));
+    },
+    reset() {
+      this.regis = {
+        name: "",
+        num: "",
+        birth: new Date(),
+        password: ""
+      };
+    },
+    register() {
+      socket.emit("register", {
+        barcode: this.last_stu_data.barcode,
+        num: this.regis.num,
+        name: this.regis.name,
+        birth: this.regis.birth,
+        password: this.regis.pw
+      }, () => {
+      });
     }
   },
   created() {
     socket.on("video", ret => this.img = `data:image/jpeg;base64, ${ret}`);
     socket.on("masked", ret => this.mask = ret);
     socket.on("jaga_jindan", ret => {
-      console.log(ret);
+      //console.log(ret);
       if (ret.status === 1) {
         console.log("학생 정보 등록 필요");
       } else if (ret.status === 2) {
@@ -81,7 +140,7 @@ export default {
       } else {
         this.last_stu_data = ret.data;
         console.log("자가진단 제출");
-        console.log(ret);
+        //console.log(ret);
       }
       this.jaga_jindan_status = ret.status;
     });
