@@ -1,28 +1,101 @@
 <template>
-  <div id="app">
-    <img alt="Vue logo" src="./assets/logo.png">
-    <HelloWorld msg="Welcome to Your Vue.js App"/>
-  </div>
+  <md-content id="app" md-theme="primary" style="background: white; display: flex; vertical-align: center;">
+    <img class="video" style="width: 60%" :src="img">
+    <div style="border: 1px solid black; width: 40%;">
+      <div style="display: flex; justify-content: space-around;">
+        <h3>학번 {{ stu_num }}</h3>
+        <h3>이름 {{ stu_name }}</h3>
+      </div>
+      <div style="display: flex; justify-content: space-around;">
+        <h3>{{ mask_text }}</h3>
+        <h3>{{ jaga_jindan_text }}</h3>
+      </div>
+      <div style="display: flex; justify-content: space-around;">
+        <h3>출석 시간</h3>
+        <h3>{{ (new Date).toLocaleString() }}</h3>
+      </div>
+      <div style="display: flex; justify-content: space-around;">
+        <h3>온도</h3>
+        <h3>정상</h3>
+      </div>
+      <div @click="test">test</div>
+    </div>
+  </md-content>
 </template>
 
 <script>
-import HelloWorld from './components/HelloWorld.vue'
+import {io} from 'socket.io-client';
+
+let socket = io("ws://127.0.0.1:8000");
 
 export default {
   name: 'App',
-  components: {
-    HelloWorld
+  data() {
+    return {
+      img: "",
+      last_stu_data: {},
+      submitted: "",
+      jaga_jindan_status: -1,
+      mask: -1
+    }
+  },
+  computed: {
+    stu_name() {
+      let name = this.last_stu_data.name;
+      return name ?? "";
+    },
+    stu_num() {
+      let num = this.last_stu_data.num;
+      return num ?? "";
+    },
+    jaga_jindan_text() {
+      if (this.jaga_jindan_status === -1) return "자가진단";
+      else if (this.jaga_jindan_status === 0) return "자가진단 제출함";
+      else if (this.jaga_jindan_status === 1) return "정보 등록";
+      else return "자가진단 미제출";
+    },
+    mask_text() {
+      if (this.mask === -1) return "마스크";
+      else if (this.mask === 0) return "마스크 미착용";
+      else return "마스크 착용";
+    }
+  },
+  methods: {
+    test() {
+      /*socket.emit("register", {
+        barcode: "바코드", num: "학번", name: "일번", birth: "생일", password: "비번"
+      }, (res) => console.log(res));*/
+      //socket.emit("submit", "C003000501", (res) => console.log(res));
+    }
+  },
+  created() {
+    socket.on("video", ret => this.img = `data:image/jpeg;base64, ${ret}`);
+    socket.on("masked", ret => this.mask = ret);
+    socket.on("jaga_jindan", ret => {
+      console.log(ret);
+      if (ret.status === 1) {
+        console.log("학생 정보 등록 필요");
+      } else if (ret.status === 2) {
+        this.last_stu_data = ret.data;
+        console.log("자가진단 미제출");
+      } else {
+        this.last_stu_data = ret.data;
+        console.log("자가진단 제출");
+        console.log(ret);
+      }
+      this.jaga_jindan_status = ret.status;
+    });
   }
 }
 </script>
 
 <style lang="scss">
-#app {
-  font-family: Avenir, Helvetica, Arial, sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  text-align: center;
-  color: #2c3e50;
-  margin-top: 60px;
-}
+@import "~vue-material/dist/theme/engine";
+
+@include md-register-theme("primary", (
+    primary: #ff4081,
+    accent: #ff4081
+));
+
+@import "~vue-material/dist/theme/all";
 </style>
