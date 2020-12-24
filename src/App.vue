@@ -22,13 +22,13 @@
     </div>
 
     <md-dialog :md-active.sync="showRegisterDialog">
-      <md-dialog-title>Preferences</md-dialog-title>
+      <md-dialog-title>학생 정보 등록</md-dialog-title>
 
       <md-tabs md-dynamic-height>
         <md-tab md-label="학생 정보 등록">
           <md-field>
             <label for="name">바코드 번호</label>
-            <md-input name="barcode" id="barcode" autocomplete="barcode" v-model="last_stu_data.barcode"/>
+            <md-input name="barcode" id="barcode" autocomplete="barcode" v-model="last_stu_data.barcode" disabled="1"/>
           </md-field>
           <md-field>
             <label for="name">이름</label>
@@ -36,22 +36,58 @@
           </md-field>
           <md-field>
             <label for="num">학번</label>
-            <md-input name="num" id="num" autocomplete="num" v-model="regis.num"/>
+            <md-input name="num" id="num" autocomplete="num" v-model="regis.num" type="number"/>
           </md-field>
           <md-field>
-            <label for="birth">생일</label>
-            <md-input name="birth" id="birth" autocomplete="birth" v-model="regis.birth"/>
+            <!--<md-datepicker v-model="regis.birth">
+              <label>생일</label>
+            </md-datepicker>-->
+            <label for="birth">생일 (YYMMDD)</label>
+            <md-input name="birth" id="birth" autocomplete="birth" type="number" v-model="regis.birth"/>
           </md-field>
           <md-field>
             <label for="pw">자가진단 비밀번호</label>
-            <md-input name="pw" id="pw" autocomplete="pw" v-model="regis.pw"/>
+            <md-input name="pw" id="pw" autocomplete="pw" v-model="regis.pw" type="password" pattern="[0-9]*"
+                      inputmode="numeric"/>
           </md-field>
         </md-tab>
       </md-tabs>
       <md-dialog-actions>
-        <md-button @click="register">Close</md-button>
+        <md-button @click="register">등록하기</md-button>
       </md-dialog-actions>
     </md-dialog>
+
+    <md-dialog :md-active.sync="showSubmitDialog">
+      <md-dialog-title>자가진단 제출</md-dialog-title>
+
+      <md-tabs md-dynamic-height>
+        <md-tab md-label="자가진단 제출">
+          <div>
+            <p><b>학생에게 코로나19가 의심되는 아래의 임상증상*이 있나요?</b><br>
+              *(주요 임상증상) 기침, 호흡곤란, 오한, 근육통, 두통, 인후통, 후각·미각 소실 또는 폐렴<br>
+              단, 기저질환 등으로 코로나19와 관계없이 평소에 다음 증상이 계속되는 경우는 제외<br>
+              <b>학생 본인 또는 동거인이 방역당국에 의해 현재 자가격리가 이루어지고 있나요?</b><br>
+              ※ &lt;방역당국 지침&gt; 최근 14일 이내 해외 입국자, 확진자와 접촉자 등은 자가격리 조치<br>
+              단, 직업특성상 잦은 해외 입·출국으로 의심증상이 없는 경우 자가격리 면제<br>
+            </p>
+            <br>
+            <p>
+              위 중 해댱하는 사항이 하나라도 있나요?
+            </p>
+            <br>
+            <md-radio v-model="form.yes" :value="true">예</md-radio>
+            <md-radio v-model="form.yes" :value="false">아니요</md-radio>
+          </div>
+        </md-tab>
+      </md-tabs>
+      <md-dialog-actions>
+        <md-button @click="submit">제출하기</md-button>
+      </md-dialog-actions>
+    </md-dialog>
+    <md-snackbar md-position="center" md-duration="2000" :md-active.sync="showRegisterSnackbar" md-persistent>
+      <span>잘못된 정보입니다. 다시 적어주세요.</span>
+      <md-button class="md-primary" @click="showRegisterSnackbar = false">Retry</md-button>
+    </md-snackbar>
   </md-content>
 </template>
 
@@ -74,12 +110,22 @@ export default {
         num: "",
         birth: new Date(),
         password: ""
-      }
+      },
+      showRegisterSnackbar: false,
+      form: {
+        yes: false,
+        no: false
+      },
+      //update: Date.now(),
+      intervalId: 0
     }
   },
   computed: {
     showRegisterDialog() {
-      return this.jaga_jindan_status === 1;
+      return this.jaga_jindan_status === 1 || this.jaga_jindan_status === 3;
+    },
+    showSubmitDialog() {
+      return this.jaga_jindan_status === 2;
     },
     stu_name() {
       let name = this.last_stu_data.name;
@@ -109,12 +155,19 @@ export default {
       //socket.emit("submit", "C003000501", (res) => console.log(res));
     },
     reset() {
-      this.regis = {
+      //this.last_stu_data = {};
+      //this.jaga_jindan_status = -1;
+      //this.showRegisterSnackbar = false;
+      /*this.regis = {
         name: "",
         num: "",
         birth: new Date(),
         password: ""
       };
+      this.form = {
+        yes: false,
+        no: false
+      };*/
     },
     register() {
       socket.emit("register", {
@@ -125,24 +178,48 @@ export default {
         password: this.regis.pw
       }, () => {
       });
-    }
+    },
+    submit() {
+      socket.emit("submit", {
+        barcode: this.last_stu_data.barcode,
+      }, () => {
+      });
+    },
   },
   created() {
     socket.on("video", ret => this.img = `data:image/jpeg;base64, ${ret}`);
     socket.on("masked", ret => this.mask = ret);
     socket.on("jaga_jindan", ret => {
+      if (this.intervalId) clearInterval(this.intervalId);
+      this.intervalId = 0;
       //console.log(ret);
-      if (ret.status === 1) {
-        console.log("학생 정보 등록 필요");
+      /*if (ret.status === 1) {
+        //console.log("학생 정보 등록 필요");
       } else if (ret.status === 2) {
         this.last_stu_data = ret.data;
-        console.log("자가진단 미제출");
+        //console.log("자가진단 미제출");
+      } else if (ret.status === 3) {
+        this.showRegisterSnackbar = true;
+        this.last_stu_data = ret.data;
+        //console.log("정보 incorrect");
       } else {
         this.last_stu_data = ret.data;
-        console.log("자가진단 제출");
+        //console.log("자가진단 제출");
         //console.log(ret);
-      }
+      }*/
+      //ret.status = 1;
+      let prev = this.showRegisterDialog;
+      //this.update = Date.now();
       this.jaga_jindan_status = ret.status;
+      if (!prev && this.showRegisterDialog) {
+        this.reset();
+      }
+      //console.log(this.showRegisterDialog);
+      this.last_stu_data = ret.data;
+      this.intervalId = setTimeout(() => {
+        console.log('reset');
+        this.reset();
+      }, 1000 * 5);
     });
   }
 }
