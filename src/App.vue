@@ -1,24 +1,26 @@
 <template>
   <md-content id="app" md-theme="primary" style="background: white; display: flex; vertical-align: center;">
     <img class="video" style="width: 60%" :src="img">
-    <div style="border: 1px solid black; width: 40%;">
-      <div style="display: flex; justify-content: space-around;">
+    <div style="border: 1px solid black; width: 40%; font-size: 20px">
+      <div style="display: flex; justify-content: space-around; border-bottom: 1px solid black;">
         <h3>학번 {{ stu_num }}</h3>
         <h3>이름 {{ stu_name }}</h3>
       </div>
-      <div style="display: flex; justify-content: space-around;">
+      <div style="display: flex; justify-content: space-around; border-bottom: 1px solid black;" :style="mask_color">
         <h3>{{ mask_text }}</h3>
+      </div>
+      <div style="display: flex; justify-content: space-around; border-bottom: 1px solid black;"
+           :style="jaga_jindan_color">
         <h3>{{ jaga_jindan_text }}</h3>
       </div>
-      <div style="display: flex; justify-content: space-around;">
-        <h3>출석 시간</h3>
-        <h3>{{ (new Date).toLocaleString() }}</h3>
+      <div style="display: flex; justify-content: space-around; border-bottom: 1px solid black;">
+        <div style="width:30%; border-right: 1px solid black; text-align: center;"><h3>체온</h3></div>
+        <div style="width:70%; background-color:green; text-align: center;"><h3>정상</h3></div>
       </div>
-      <div style="display: flex; justify-content: space-around;">
-        <h3>온도</h3>
-        <h3>정상</h3>
+      <div style="font-size: 15px;text-align: center;">
+        <h3>출석 시간 : {{ (new Date).toLocaleString() }}</h3>
       </div>
-      <div @click="test">test</div>
+      <!--<div @click="test">test</div>-->
     </div>
 
     <md-dialog :md-active.sync="showRegisterDialog">
@@ -28,7 +30,8 @@
         <md-tab md-label="학생 정보 등록">
           <md-field>
             <label for="name">바코드 번호</label>
-            <md-input name="barcode" id="barcode" autocomplete="barcode" v-model="last_stu_data.barcode" disabled="1"/>
+            <md-input name="barcode" id="barcode" autocomplete="barcode" v-model="last_stu_data.barcode"
+                      :disabled="true"/>
           </md-field>
           <md-field>
             <label for="name">이름</label>
@@ -43,11 +46,11 @@
               <label>생일</label>
             </md-datepicker>-->
             <label for="birth">생일 (YYMMDD)</label>
-            <md-input name="birth" id="birth" autocomplete="birth" type="number" v-model="regis.birth"/>
+            <md-input name="birth" id="birth" autocomplete="birth" type="number" v-model="regis.birthday"/>
           </md-field>
           <md-field>
             <label for="pw">자가진단 비밀번호</label>
-            <md-input name="pw" id="pw" autocomplete="pw" v-model="regis.pw" type="password" pattern="[0-9]*"
+            <md-input name="pw" id="pw" autocomplete="pw" v-model="regis.password" type="password" pattern="[0-9]*"
                       inputmode="numeric"/>
           </md-field>
         </md-tab>
@@ -84,7 +87,7 @@
         <md-button @click="submit">제출하기</md-button>
       </md-dialog-actions>
     </md-dialog>
-    <md-snackbar md-position="center" md-duration="2000" :md-active.sync="showRegisterSnackbar" md-persistent>
+    <md-snackbar md-position="center" :md-duration="2000" :md-active.sync="showRegisterSnackbar" md-persistent>
       <span>잘못된 정보입니다. 다시 적어주세요.</span>
       <md-button class="md-primary" @click="showRegisterSnackbar = false">Retry</md-button>
     </md-snackbar>
@@ -108,7 +111,7 @@ export default {
       regis: {
         name: "",
         num: "",
-        birth: new Date(),
+        birthday: "",
         password: ""
       },
       showRegisterSnackbar: false,
@@ -117,7 +120,8 @@ export default {
         no: false
       },
       //update: Date.now(),
-      intervalId: 0
+      intervalId: 0,
+      duration: 2000
     }
   },
   computed: {
@@ -141,11 +145,22 @@ export default {
       else if (this.jaga_jindan_status === 1) return "정보 등록";
       else return "자가진단 미제출";
     },
+    jaga_jindan_color() {
+      if (this.jaga_jindan_status === -1) return "background-color: white;";
+      else if (this.jaga_jindan_status === 0) return "background-color: green;";
+      else if (this.jaga_jindan_status === 1) return "background-color: gray;";
+      else return "background-color: red;";
+    },
     mask_text() {
       if (this.mask === -1) return "마스크";
       else if (this.mask === 0) return "마스크 미착용";
       else return "마스크 착용";
-    }
+    },
+    mask_color() {
+      if (this.mask === -1) return "background-color: white;";
+      else if (this.mask === 0) return "background-color: red;";
+      else return "background-color: green;";
+    },
   },
   methods: {
     test() {
@@ -174,8 +189,8 @@ export default {
         barcode: this.last_stu_data.barcode,
         num: this.regis.num,
         name: this.regis.name,
-        birth: this.regis.birth,
-        password: this.regis.pw
+        birth: this.regis.birthday,
+        password: this.regis.password
       }, () => {
       });
     },
@@ -193,20 +208,20 @@ export default {
       if (this.intervalId) clearInterval(this.intervalId);
       this.intervalId = 0;
       //console.log(ret);
-      /*if (ret.status === 1) {
+      if (ret.status === 1) {
         //console.log("학생 정보 등록 필요");
       } else if (ret.status === 2) {
-        this.last_stu_data = ret.data;
+        //this.last_stu_data = ret.data;
         //console.log("자가진단 미제출");
       } else if (ret.status === 3) {
         this.showRegisterSnackbar = true;
-        this.last_stu_data = ret.data;
+        //this.last_stu_data = ret.data;
         //console.log("정보 incorrect");
       } else {
-        this.last_stu_data = ret.data;
+        //this.last_stu_data = ret.data;
         //console.log("자가진단 제출");
         //console.log(ret);
-      }*/
+      }
       //ret.status = 1;
       let prev = this.showRegisterDialog;
       //this.update = Date.now();
@@ -215,15 +230,27 @@ export default {
         this.reset();
       }
       //console.log(this.showRegisterDialog);
+      if (ret.status === 3) this.regis = ret.data;
       this.last_stu_data = ret.data;
-      this.intervalId = setTimeout(() => {
-        console.log('reset');
-        this.reset();
-      }, 1000 * 5);
+      console.log(ret, ret.data);
+
+      if (ret.status === 0)
+        this.intervalId = setTimeout(() => {
+          console.log('reset');
+          this.reset();
+        }, 1000 * 5);
     });
   }
 }
 </script>
+
+<style>
+@import url("https://cdn.jsdelivr.net/gh/moonspam/NanumBarunGothic@latest/nanumbarungothicsubset.css");
+
+* {
+  font-family: 'NanumBarunGothic', sans-serif;
+}
+</style>
 
 <style lang="scss">
 @import "~vue-material/dist/theme/engine";
