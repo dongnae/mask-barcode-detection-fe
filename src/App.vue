@@ -3,19 +3,36 @@
     <img class="video" style="width: 60%" :src="img">
     <div style="border: 1px solid black; width: 40%; font-size: 20px">
       <div style="display: flex; justify-content: space-around; border-bottom: 1px solid black;">
-        <h3>학번 {{ stu_num }}</h3>
-        <h3>이름 {{ stu_name }}</h3>
+        <h3>학번: {{ stu_num }}</h3>
+        <h3>이름: {{ stu_name }}</h3>
       </div>
-      <div style="display: flex; justify-content: space-around; border-bottom: 1px solid black;" :style="mask_color">
-        <h3>{{ mask_text }}</h3>
+      <div>
+        <div style="display: flex; justify-content: space-around; border-bottom: 1px solid black;">
+          <div
+              style="width:30%; border-right: 1px solid black; text-align: center; display: flex; justify-content: space-around">
+            <h3>마스크</h3>
+            <img src="/마스크.PNG" style="height: auto; width: 100px;">
+          </div>
+          <div :style="mask_color" style="flex: 1; text-align: center;"><h3>{{ mask_text }}</h3></div>
+        </div>
       </div>
-      <div style="display: flex; justify-content: space-around; border-bottom: 1px solid black;"
-           :style="jaga_jindan_color">
-        <h3>{{ jaga_jindan_text }}</h3>
+      <div>
+        <div style="display: flex; justify-content: space-around; border-bottom: 1px solid black;">
+          <div
+              style="width:30%; border-right: 1px solid black; text-align: center; display: flex; justify-content: space-around">
+            <h3>자가진단</h3>
+            <img src="/자가진단.PNG" style="height: 65px; width: auto;">
+          </div>
+          <div :style="jaga_jindan_color" style="flex: 1; text-align: center;"><h3>{{ jaga_jindan_text }}</h3></div>
+        </div>
       </div>
       <div style="display: flex; justify-content: space-around; border-bottom: 1px solid black;">
-        <div style="width:30%; border-right: 1px solid black; text-align: center;"><h3>체온</h3></div>
-        <div style="width:70%; background-color:green; text-align: center;"><h3>정상</h3></div>
+        <div
+            style="width:30%; border-right: 1px solid black; text-align: center; display: flex; justify-content: space-around">
+          <h3>체온</h3>
+          <img src="/온도계.PNG" style="height: auto; width: 50px;">
+        </div>
+        <div style="width:70%; background-color:#33FF00; text-align: center;"><h3>정상</h3></div>
       </div>
       <div style="font-size: 15px;text-align: center;">
         <h3>출석 시간 : {{ (new Date).toLocaleString() }}</h3>
@@ -121,7 +138,8 @@ export default {
       },
       //update: Date.now(),
       intervalId: 0,
-      duration: 2000
+      duration: 2000,
+      requestOpen: false
     }
   },
   computed: {
@@ -147,7 +165,7 @@ export default {
     },
     jaga_jindan_color() {
       if (this.jaga_jindan_status === -1) return "background-color: white;";
-      else if (this.jaga_jindan_status === 0) return "background-color: green;";
+      else if (this.jaga_jindan_status === 0) return "background-color: #33FF00;";
       else if (this.jaga_jindan_status === 1) return "background-color: gray;";
       else return "background-color: red;";
     },
@@ -159,7 +177,7 @@ export default {
     mask_color() {
       if (this.mask === -1) return "background-color: white;";
       else if (this.mask === 0) return "background-color: red;";
-      else return "background-color: green;";
+      else return "background-color: #33FF00;";
     },
   },
   methods: {
@@ -170,10 +188,10 @@ export default {
       //socket.emit("submit", "C003000501", (res) => console.log(res));
     },
     reset() {
-      //this.last_stu_data = {};
-      //this.jaga_jindan_status = -1;
-      //this.showRegisterSnackbar = false;
-      /*this.regis = {
+      this.last_stu_data = {};
+      this.jaga_jindan_status = -1;
+      this.showRegisterSnackbar = false;
+      this.regis = {
         name: "",
         num: "",
         birth: new Date(),
@@ -182,7 +200,7 @@ export default {
       this.form = {
         yes: false,
         no: false
-      };*/
+      };
     },
     register() {
       socket.emit("register", {
@@ -202,6 +220,10 @@ export default {
     },
   },
   created() {
+    socket.on("motor_close", () => {
+      this.requestOpen = false;
+      this.reset();
+    });
     socket.on("video", ret => this.img = `data:image/jpeg;base64, ${ret}`);
     socket.on("masked", ret => this.mask = ret);
     socket.on("jaga_jindan", ret => {
@@ -240,6 +262,15 @@ export default {
           this.reset();
         }, 1000 * 5);
     });
+
+    setInterval(() => {
+      if (this.requestOpen) return;
+      if (this.last_stu_data.name !== null && this.mask === 1 && this.jaga_jindan_status === 0) {
+        this.requestOpen = true;
+        console.log("open door");
+        socket.emit("open");
+      }
+    }, 1000);
   }
 }
 </script>
