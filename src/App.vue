@@ -32,7 +32,7 @@
           <h3>체온</h3>
           <img src="/온도계.PNG" style="height: auto; width: 50px;">
         </div>
-        <div style="width:70%; background-color:#33FF00; text-align: center;"><h3>정상</h3></div>
+        <div style="width:70%; text-align: center;" :style="temperature_color"><h3>{{ temperature_text }}</h3></div>
       </div>
       <div style="font-size: 15px;text-align: center;">
         <h3>출석 시간 : {{ (new Date).toLocaleString() }}</h3>
@@ -46,14 +46,14 @@
       <md-tabs md-dynamic-height>
         <md-tab md-label="학생 정보 등록">
           <md-field>
-            <label for="name">바코드 번호</label>
+            <label for="barcode">바코드 번호</label>
             <md-input name="barcode" id="barcode" autocomplete="barcode" v-model="last_stu_data.barcode"
                       :disabled="true"/>
           </md-field>
-          <md-field>
+          <!--<md-field>
             <label for="name">이름</label>
             <md-input name="name" id="name" autocomplete="name" v-model="regis.name"/>
-          </md-field>
+          </md-field>-->
           <md-field>
             <label for="num">학번</label>
             <md-input name="num" id="num" autocomplete="num" v-model="regis.num" type="number"/>
@@ -124,6 +124,7 @@ export default {
       last_stu_data: {},
       submitted: "",
       jaga_jindan_status: -1,
+      temperature: 0,
       mask: -1,
       regis: {
         name: "",
@@ -179,6 +180,16 @@ export default {
       else if (this.mask === 0) return "background-color: red;";
       else return "background-color: #33FF00;";
     },
+    temperature_text() {
+      if (this.temperature === -1) return "";
+      else if (this.temperature === 0) return "정상";
+      else return "고열";
+    },
+    temperature_color() {
+      if (this.temperature === -1) return "background-color: white;";
+      else if (this.temperature === 0) return "background-color: #33FF00;";
+      else return "background-color: red;";
+    },
   },
   methods: {
     test() {
@@ -206,7 +217,7 @@ export default {
       socket.emit("register", {
         barcode: this.last_stu_data.barcode,
         num: this.regis.num,
-        name: this.regis.name,
+        //name: this.regis.name,
         birth: this.regis.birthday,
         password: this.regis.password
       }, () => {
@@ -226,12 +237,13 @@ export default {
     });
     socket.on("video", ret => this.img = `data:image/jpeg;base64, ${ret}`);
     socket.on("masked", ret => this.mask = ret);
+    socket.on("temperature", ret => this.temperature = ret);
     socket.on("jaga_jindan", ret => {
       if (this.intervalId) clearInterval(this.intervalId);
       this.intervalId = 0;
       //console.log(ret);
       if (ret.status === 1) {
-        //console.log("학생 정보 등록 필요");
+        console.log("학생 정보 등록 필요");
       } else if (ret.status === 2) {
         //this.last_stu_data = ret.data;
         //console.log("자가진단 미제출");
@@ -249,12 +261,13 @@ export default {
       //this.update = Date.now();
       this.jaga_jindan_status = ret.status;
       if (!prev && this.showRegisterDialog) {
-        this.reset();
+        //this.reset();
       }
+
       //console.log(this.showRegisterDialog);
       if (ret.status === 3) this.regis = ret.data;
       this.last_stu_data = ret.data;
-      console.log(ret, ret.data);
+      console.log(ret, ret.data, this.jaga_jindan_status);
 
       if (ret.status === 0)
         this.intervalId = setTimeout(() => {
@@ -268,7 +281,10 @@ export default {
       if (this.last_stu_data.name !== null && this.mask === 1 && this.jaga_jindan_status === 0) {
         this.requestOpen = true;
         console.log("open door");
-        socket.emit("open");
+        console.log(this.last_stu_data.num);
+        socket.emit("open", {
+          num: this.last_stu_data.num
+        });
       }
     }, 1000);
   }
