@@ -108,13 +108,16 @@
       <span>잘못된 정보입니다. 다시 적어주세요.</span>
       <md-button class="md-primary" @click="showRegisterSnackbar = false">Retry</md-button>
     </md-snackbar>
+    <md-snackbar md-position="center" :md-duration="Infinity" :md-active.sync="showRemoveSnackbar" md-persistent>
+      <span>학생증을 단말함에서 제거해주세요.</span>
+    </md-snackbar>
   </md-content>
 </template>
 
 <script>
 import {io} from 'socket.io-client';
 
-let socket = io("ws://127.0.0.1:8000");
+let socket = io(`ws://${location.hostname}:8000`);
 
 export default {
   name: 'App',
@@ -124,7 +127,8 @@ export default {
       last_stu_data: {},
       submitted: "",
       jaga_jindan_status: -1,
-      temperature: 0,
+      jaga_jindan_last_update: 0,
+      temperature: -1,
       mask: -1,
       regis: {
         name: "",
@@ -133,6 +137,7 @@ export default {
         password: ""
       },
       showRegisterSnackbar: false,
+      showRemoveSnackbar: false,
       form: {
         yes: false,
         no: false
@@ -201,7 +206,10 @@ export default {
     reset() {
       this.last_stu_data = {};
       this.jaga_jindan_status = -1;
+      this.mask = -1;
+      this.temperature = -1;
       this.showRegisterSnackbar = false;
+      this.showRemoveSnackbar = false;
       this.regis = {
         name: "",
         num: "",
@@ -232,12 +240,19 @@ export default {
   },
   created() {
     socket.on("motor_close", () => {
+      console.log("motor close");
       this.requestOpen = false;
       this.reset();
     });
     socket.on("video", ret => this.img = `data:image/jpeg;base64, ${ret}`);
-    socket.on("masked", ret => this.mask = ret);
-    socket.on("temperature", ret => this.temperature = ret);
+    socket.on("masked", ret => {
+      if (this.mask === 1) return;
+      this.mask = ret;
+    });
+    socket.on("temperature", ret => {
+      if (this.temperature === 0 && ret === -1) return;
+      this.temperature = ret;
+    });
     socket.on("jaga_jindan", ret => {
       if (this.intervalId) clearInterval(this.intervalId);
       this.intervalId = 0;
@@ -255,6 +270,7 @@ export default {
         //this.last_stu_data = ret.data;
         //console.log("자가진단 제출");
         //console.log(ret);
+        this.jaga_jindan_last_update = Date.now();
       }
       //ret.status = 1;
       let prev = this.showRegisterDialog;
@@ -267,7 +283,7 @@ export default {
       //console.log(this.showRegisterDialog);
       if (ret.status === 3) this.regis = ret.data;
       this.last_stu_data = ret.data;
-      console.log(ret, ret.data, this.jaga_jindan_status);
+      //console.log(ret, ret.data, this.jaga_jindan_status);
 
       if (ret.status === 0)
         this.intervalId = setTimeout(() => {
@@ -278,7 +294,12 @@ export default {
 
     setInterval(() => {
       if (this.requestOpen) return;
-      if (this.last_stu_data.name !== null && this.mask === 1 && this.jaga_jindan_status === 0) {
+      if (this.last_stu_data.name !== null && this.mask === 1 && this.jaga_jindan_status === 0 && this.temperature === 0) {
+        console.log(this.jaga_jindan_last_update, this.showRemoveSnackbar);
+        if (Date.now() - this.jaga_jindan_last_update <= 700) {
+          this.showRemoveSnackbar = true;
+          return;
+        }
         this.requestOpen = true;
         console.log("open door");
         console.log(this.last_stu_data.num);
@@ -286,7 +307,7 @@ export default {
           num: this.last_stu_data.num
         });
       }
-    }, 1000);
+    }, 100);
   }
 }
 </script>
