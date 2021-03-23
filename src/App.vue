@@ -108,9 +108,15 @@
       <span>잘못된 정보입니다. 다시 적어주세요.</span>
       <md-button class="md-primary" @click="showRegisterSnackbar = false">Retry</md-button>
     </md-snackbar>
-    <md-snackbar md-position="center" :md-duration="Infinity" :md-active.sync="showRemoveSnackbar" md-persistent>
-      <span>학생증을 단말함에서 제거해주세요.</span>
-    </md-snackbar>
+    <md-dialog :md-active.sync="showRemoveSnackbar">
+      <md-dialog-title>학생증을 단말함에서 제거해주세요.</md-dialog-title>
+
+      <md-tabs md-dynamic-height>
+        <md-tab md-label="알림">
+          <h1>학생증을 단말함에서 제거해주세요.</h1>
+        </md-tab>
+      </md-tabs>
+    </md-dialog>
   </md-content>
 </template>
 
@@ -301,6 +307,7 @@ export default {
           return;
         }
         this.requestOpen = true;
+        this.showRemoveSnackbar = false;
         console.log("open door");
         console.log(this.last_stu_data.num);
         socket.emit("open", {
